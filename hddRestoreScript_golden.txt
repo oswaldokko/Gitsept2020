@@ -1,0 +1,752 @@
+#!/bin/sh
+# This is the FusionMX customization script from a restored image.
+# HDD should have been provided by TSE.
+# Configured for new PCX workstation
+# Version: 11Nov2013
+#
+echo ""
+echo "########################################"
+echo "## START OF THE CUSTOMIZATION PROCESS ##"
+echo "########################################"
+echo ""
+todate=`date +%d%b%Y_%T`
+version="11Nov2013"
+echo "Date today is $todate"
+echo ""
+echo "Extracting CUSTOM_$version directory from /tmp..."
+echo ""
+echo "Command -> cd /tmp"
+cd /tmp
+
+if [ -f /tmp/CUSTOM_$version.tar.gz ]
+then
+    tar xzvf CUSTOM_$version.tar.gz
+    if [ $? -eq 0 ]
+    then
+        echo ""
+        echo "Successfully extracted CUSTOM_$version directory..."
+        echo ""
+    else
+        echo ""
+        echo "ERROR: Problem extracting CUSTOM_$version directory..."
+	echo "ERROR: Please try again."
+	echo "ERROR: Exiting..."
+	echo ""
+	exit
+    fi
+else
+    echo ""
+    echo "ERROR: /tmp/CUSTOM_$version.tar.gz not found..."
+    echo "ERROR: Please connect the workstation to the TSEFileServer"
+    echo "ERROR: Execute the command scp fusion@10.91.64.110:/home/fusion/share/SCRIPTS/CUSTOM_$version.tar.gz /tmp"
+    echo "ERROR: exiting..."
+    echo ""
+    exit
+fi
+
+echo ""
+echo -n "Enter enVision Version: "
+read enVersion
+
+if [ -d /opt/ltx/releases/$enVersion ]
+then
+    echo ""
+    echo "Found /opt/ltx/releases/$enVersion"
+    echo ""
+else
+    echo "enVision $enVersion not found!"
+    echo "Exiting..."
+    exit
+fi
+
+echo "Set the PATH environment variable..."
+PATH=".:~/com"
+PATH=$PATH":/bin:/usr/bin:/usr/sbin:/sbin:/usr/local/bin:/usr/local/sbin"
+PATH=$PATH":/usr/X11R6/bin"
+PATH=$PATH":/usr/local/Adobe/Acrobat7.0/bin"
+PATH=$PATH":/opt/ltx/bin:$which_ltx/com:$which_ltx/cmd:$which_ltx/scripts:$which_ltx/service"
+
+
+echo "Command -> cd /etc"
+cd /etc
+
+## Create hosts file
+##
+##echo "Gathering workstation Information..."
+##ipaddress=`ifconfig -a | grep Bcast | awk -F":| +" '{print $4}'`
+##hostlocal=`hostname`
+##echo "IP Address is $ipaddress"
+##echo "Hostname is $hostlocal"
+
+echo ""
+echo "Checking for hosts file..."
+if [ -f /etc/hosts ]
+then
+    echo ""
+    echo "Found /etc/hosts file..."
+    echo "Renaming /etc/hosts file..."
+    echo "Command -> mv hosts hosts_$todate"
+    mv hosts hosts_$todate
+    echo ""
+fi
+
+ipaddress=""
+myhostname=""
+echo "Now, we need to create the /etc/hosts file..."
+echo ""
+echo -n "Enter Workstation Hostname : "
+read myHostEntry
+myhostname=`echo $myHostEntry | awk '{print toupper($0)}'`
+
+echo -n "Enter IP Address of workstation : "
+read ipaddress
+echo -n "Enter netmask : "
+read mynetmask
+echo -n "Enter gateway : "
+read mygateway
+
+echo "127.0.0.1      localhost.localdomain localhost $myhostname" > /etc/hosts
+echo "$ipaddress   $myhostname" >> /etc/hosts
+echo "137.55.52.21   PSCE4501" >> /etc/hosts
+echo "137.55.52.22   PSCE4502" >> /etc/hosts
+echo "10.91.64.110   TSEFileServer" >> /etc/hosts
+echo "10.91.64.140   TSEFileServer2" >> /etc/hosts
+echo "/etc/hosts file created."
+echo ""
+
+echo ""
+echo "Checking for /etc/resolv.conf file..."
+if [ -f /etc/resolv.conf ]
+then
+    echo ""
+    echo "Found /etc/resolv.conf file..."
+    echo "Renaming /etc/resolv.conf file..."
+    echo "Command -> mv resolv.conf resolv.conf_$todate"
+    mv resolv.conf resolv.conf_$todate
+    echo ""
+    echo "search cal.st.com" > /etc/resolv.conf
+    echo "nameserver 10.91.0.100" >> /etc/resolv.conf
+    echo "nameserver 10.91.0.92" >> /etc/resolv.conf    
+fi
+echo "/etc/resolv.conf file created..."
+echo ""
+
+echo "Creating /etc/sysconfig/network file..."
+echo "Renaming /etc/sysconfig/network file..."
+echo "Command -> mv /etc/sysconfig/network /etc/sysconfig/network_$todate"
+mv /etc/sysconfig/network /etc/sysconfig/network_$todate
+echo "NETWORKING=yes" > /etc/sysconfig/network
+echo "HOSTNAME=$myhostname" >> /etc/sysconfig/network
+
+echo "Now, we need to set the network interface settings..."
+echo "Getting eth0 hwaddress..."
+myETH0Add=`ifconfig -a | grep eth0 | awk '{print $NF}'`
+echo "Renaming /etc/sysconfig/network-scripts/ifcfg-eth0 file..."
+cd /etc/sysconfig/network-scripts
+echo "Command -> mv ifcfg-eth0 oldifcfg-eth0_$todate"
+mv ifcfg-eth0 oldifcfg-eth0_$todate
+echo "DEVICE=eth0" > ifcfg-eth0
+echo "BOOTPROTO=none" >> ifcfg-eth0
+echo "ONBOOT=yes" >> ifcfg-eth0
+echo "TYPE=Ethernet" >> ifcfg-eth0
+echo "USERCTL=no" >> ifcfg-eth0
+echo "PEERDNS=yes" >> ifcfg-eth0
+echo "HWADDR=$myETH0Add" >> ifcfg-eth0
+echo "IPADDR=$ipaddress" >> ifcfg-eth0
+echo "NETMASK=$mynetmask" >> ifcfg-eth0
+echo "GATEWAY=$mygateway" >> ifcfg-eth0
+
+echo "Creating auto.misc and auto.master files..."
+echo ""
+## Edit auto files
+##
+## auto.misc
+if [ -f /etc/auto.misc ]
+then
+    echo "Found auto.misc file..."
+    echo "Renaming auto.misc file..."
+    echo "Command -> mv auto.misc auto.misc_$todate"
+    mv auto.misc auto.misc_$todate   
+fi
+
+echo "Copying auto.misc file from the CUSTOM_$version directory..."
+echo "Command -> cp /tmp/CUSTOM_$version/auto.misc /etc/auto.misc"
+cp /tmp/CUSTOM_$version/auto.misc /etc/auto.misc
+if [ $? -eq 0 ]
+then
+  echo "Successfully copied auto.misc file"
+else
+  echo "ERROR: Failed to copy of auto.misc file"
+  echo "ERROR: Exiting..."
+  exit
+fi
+
+echo ""
+## auto.master
+##
+if [ -f /etc/auto.master ]
+then
+    echo "Found auto.master file..."
+    echo "Renaming auto.master file..."
+    echo "Command -> mv auto.master auto.master_$todate"
+    mv auto.master auto.master_$todate
+fi
+
+echo "Copying auto.master file from the CUSTOM_$version directory..."
+cp /tmp/CUSTOM_$version/auto.master /etc/auto.master
+if [ $? -eq 0 ]
+then
+  echo "Successfully copied auto.master file"
+else
+  echo "ERROR: Failed to copy auto.master file"
+  echo "ERROR: Exiting..."
+  exit
+fi
+    
+## Rename auto.direct because it is not needed
+##
+if [ -f /etc/auto.direct ]
+then
+    echo "Found auto.direct file."
+    echo "Renaming auto.direct file since this is not needed."
+    echo "Command -> mv auto.direct auto.direct_$todate"
+    mv auto.direct auto.direct_$todate
+fi
+
+## Create mount points
+echo ""
+echo "Creating mount points..."
+echo "Command -> cd /"
+cd /
+
+if test -h /A5XX
+then
+    echo ""
+    echo "/A5XX link exists..."
+    echo "Removing /A5XX link..."
+    echo "Command -> unlink /A5XX"
+    unlink /A5XX
+    echo "Creating /A5XX link..."
+    echo "Command -> ln -s /misc/A5XX"
+    ln -s /misc/A5XX    
+else
+    echo "Creating /A5XX link..."
+    echo "Command -> ln -s /misc/A5XX"
+    ln -s /misc/A5XX
+fi
+
+if test -h /TSESRVR
+then
+    echo ""
+    echo "/TSESRVR link exists..."
+    echo "Removing /TSESRVR link..."
+    echo "Command -> unlink /TSESRVR"
+    unlink /TSESRVR
+    echo "Creating /TSESRVR link..."
+    echo "Command -> ln -s /misc/TSESRVR"
+    ln -s /misc/TSESRVR
+else
+    echo "Creating /TSESRVR link..."
+    echo "Command -> ln -s /misc/TSESRVR"
+    ln -s /misc/TSESRVR
+fi
+
+if test -h /TSESRVR2
+then
+    echo ""
+    echo "/TSESRVR2 link exists..."
+    echo "Removing /TSESRVR2 link..."
+    echo "Command -> unlink /TSESRVR2"
+    unlink /TSESRVR2
+    echo "Creating /TSESRVR2 link..."
+    echo "Command -> ln -s /misc/TSESRVR2"
+    ln -s /misc/TSESRVR2
+else
+    echo "Creating /TSESRVR2 link..."
+    echo "Command -> ln -s /misc/TSESRVR2"
+    ln -s /misc/TSESRVR2
+fi
+
+## Cleaning up /etc/mtab
+#echo ""
+#echo "Cleaning /etc/mtab file..."
+#echo "Command -> cd /etc"
+#cd /etc
+#echo "Command -> cat /etc/mtab | grep -v automount > /tmp/mtab_temp"
+#cat /etc/mtab | grep -v automount > /tmp/mtab_temp
+#echo "Command -> mv /etc/mtab /etc/mtab_$todate"
+#mv /etc/mtab /etc/mtab_$todate
+#echo "Command -> mv /tmp/mtab_temp /etc/mtab"
+#mv /tmp/mtab_temp /etc/mtab
+
+## Restart automounter
+echo ""
+auto_cnt=`ps -eaf | grep automount | grep -v grep | wc -l`
+if [ $auto_cnt -eq 0 ]
+then
+    echo "Starting automounter..."
+    echo "Command -> service autofs start"
+    service autofs start
+else
+    echo "Restarting automounter..."
+    echo "Command -> service autofs restart"
+    service autofs restart
+fi
+
+echo "Completed automount setup."
+echo ""
+
+echo "Copying local scripts to /.SCRIPTS directory..."
+## Copy local scripts
+echo "Command -> cd /"
+cd /
+if test -d /.SCRIPTS
+then
+    echo "Found .SCRIPTS directory"
+    echo "Renaming .SCRIPTS directory..."
+    echo "Command -> mv /.SCRIPTS /.SCRIPTS_$todate"
+    mv /.SCRIPTS /.SCRIPTS_$todate
+fi
+
+    echo "Creating /.SCRIPTS directory..."
+    echo "Command -> mkdir .SCRIPTS"
+    mkdir .SCRIPTS
+    echo "Command -> chmod 755 .SCRIPTS"
+    chmod 755 .SCRIPTS
+    echo "Command -> cd .SCRIPTS"
+    cd .SCRIPTS
+    echo "Command -> cp /tmp/CUSTOM_$version/MX_getdf.sh /.SCRIPTS/"
+    cp /tmp/CUSTOM_$version/MX_getdf.sh /.SCRIPTS/
+    echo "Command -> cp /tmp/CUSTOM_$version/MX_getsum.sh /.SCRIPTS/"
+    cp /tmp/CUSTOM_$version/MX_getsum.sh /.SCRIPTS/
+    echo "Command -> cp /tmp/CUSTOM_$version/ltx_dskmon.sh /.SCRIPTS/"
+    cp /tmp/CUSTOM_$version/ltx_dskmon.sh /.SCRIPTS/
+    echo "Command -> cp /tmp/CUSTOM_$version/fsmx_nobin_notify.sh /.SCRIPTS/"
+    cp /tmp/CUSTOM_$version/fsmx_nobin_notify.sh /.SCRIPTS/
+    echo "Command -> chmod 755 /.SCRIPTS/*"
+    chmod 755 /.SCRIPTS/*
+
+## Needed by the local scripts
+##
+echo ""
+echo "Sometimes, sh excutable is not present at /usr/bin directory"
+echo "Checking /usr/bin/sh..."
+if [ -f /usr/bin/sh ]
+then
+    echo "Found /usr/bin/sh"
+else
+    echo "/usr/bin/sh not found..."
+    echo "Check for /bin/sh..."
+    if [ -f /bin/sh ]
+    then
+      echo "Command -> cd /usr/bin"
+      cd /usr/bin
+      echo "Command -> ln -s /bin/sh"
+      ln -s /bin/sh
+    else
+      echo "Copying from /tmp/CUSTOM_$version directory..."
+      echo "Command -> cd /usr/bin"
+      cd /usr/bin
+      echo "Command -> cp /tmp/CUSTOM_$version/sh /usr/bin/"
+      cp /tmp/CUSTOM_$version/sh /usr/bin/
+    fi
+fi
+
+echo "Completed copying system scripts..."
+echo ""
+
+echo "Setting cronjobs..."
+## Set crontab
+##
+echo "Command -> crontab /tmp/CUSTOM_$version/fusionMXCronTemplate.txt"
+crontab /tmp/CUSTOM_$version/fusionMXCronTemplate.txt
+if [ $? -eq 0 ]
+then
+    echo "Successfully set crontab..."
+else
+    echo "ERROR: Failed to set crontab file."
+    echo "ERROR: Please manually set."
+fi
+
+echo ""
+echo "Cleaning old dlog files from /opt/ltx_nic/dlog directory..."
+## Clean dlog directory
+##
+if test -d /opt/ltx_nic/dlog
+then
+    echo "Found /opt/ltx_nic/dlog directory"
+    echo "Command -> cd /opt/ltx_nic/dlog"
+    cd /opt/ltx_nic/dlog
+    if test -d OLD_DATA
+    then
+        echo "OLD_DATA directory exists..."
+    else
+        echo "Command -> mkdir OLD_DATA"
+        mkdir OLD_DATA
+	echo "Command -> chmod 755 OLD_DATA"
+        chmod 755 OLD_DATA
+    fi
+    
+    echo ""
+    echo "Checking for old .std and .txt files..."
+    
+    old_std=`ls *.std | wc -l`
+    old_txt=`ls *.txt | wc -l`
+    
+    if [ $old_std -gt 0 ]
+    then
+        echo "mv *.std* OLD_DATA/"
+        mv *.std* OLD_DATA/
+    fi
+    
+    if [ $old_txt -gt 0 ]
+    then
+        echo "mv *.txt* OLD_DATA/"
+        mv *.txt* OLD_DATA/         
+    fi
+    
+else
+    echo "mkdir /opt/ltx_nic/dlog"
+    mkdir /opt/ltx_nic/dlog
+    echo "chmod 777 /opt/ltx_nic/dlog"
+    chmod 777 /opt/ltx_nic/dlog
+fi
+
+echo "/opt/ltx_nic/dlog directoty check is done."
+echo ""
+
+echo "Configuring Auto-TP loading..."
+echo "Checking jre package 6.26..."
+jre_check=`rpm -qa | grep jre-1.6.0_26-fcs | wc -l`
+
+if [ $jre_check -eq 0 ]
+then
+  echo "No jre_1.6 package installed."
+  echo "Installing jre_1.6 package..."
+  
+  echo "Checking for java directory..."
+  if test -d /usr/java
+  then
+    echo "Found /usr/java directory..."
+  else
+    echo "No /usr/java directory..."
+    echo "Creating /usr/java directory..."
+    echo "Command -> mkdir /usr/java"
+    mkdir /usr/java
+  fi
+  
+  ## For auto-TP loading install jre_1.6
+  echo "Command -> cd /usr/java"
+  cd /usr/java
+  echo "Command -> rpm -ivh /tmp/CUSTOM_$version/jre-6u26-linux-i586.rpm"
+  rpm -ivh /tmp/CUSTOM_$version/jre-6u26-linux-i586.rpm
+  if [ $? -eq 0 ]
+  then
+    echo "Checking jre installation..."
+    echo "Command -> rpm -qa | grep jre-1.6.0_26-fcs"
+    jre_recheck=`rpm -qa | grep jre-1.6.0_26-fcs | wc -l`
+    if [ $jre_recheck -eq 0 ]
+    then
+      echo "ERROR: Failed to install jre package."
+      echo "ERROR: Please manually install..."
+    else
+      echo "Successfully installed jre-1.6.0_26-fcs package."
+    fi
+  fi
+else
+  echo "jre package installed."
+  echo "Command -> rpm -qa | grep jre-1.6.0_26-fcs"
+  rpm -qa | grep jre-1.6.0_26-fcs
+fi
+echo ""
+
+echo "Customizing optool..."
+## For customized optool
+##
+echo "Checking for user_data directory..."
+if test -d /opt/ltx_nic/user_data
+then
+    echo "Found user_data directory."
+    echo "Command -> cd /opt/ltx_nic/user_data"
+    cd /opt/ltx_nic/user_data
+    if test -d optool
+    then
+      echo "Found optool directory."
+      echo "Command -> mv optool optool_$todate"
+      mv optool optool_$todate
+    fi
+    echo "Copying optool scripts to /opt/ltx_nic/user_data/optool directory..."
+    echo "Command -> tar xvf /tmp/CUSTOM_$version/fusion_optool.tar"
+    tar xvf /tmp/CUSTOM_$version/fusion_optool.tar
+else
+    echo "ERROR: /opt/ltx_nic/user_data does not exists..."
+    echo "ERROR: Please check..."
+    exit
+fi
+echo ""
+
+## Check for optool.uic and lot_info.cfg
+##
+echo "Checking defaults directory for presence of optool.uic and lot_info.cfg"
+if test -d /opt/ltx/releases/$enVersion/common/defaults
+then
+    echo "Command -> cd /opt/ltx/releases/$enVersion/common/defaults"
+    cd /opt/ltx/releases/$enVersion/common/defaults
+    if [ -f optool.uic ]
+    then
+        echo "Found optool.uic"
+	echo "Renaming optool.uic..."
+	echo "Command -> mv optool.uic optool.uic_$todate"
+        mv optool.uic optool.uic_$todate
+    fi
+    echo "Copying optool.uic..."
+    echo "Command -> cp /tmp/CUSTOM_$version/optool.uic /opt/ltx/releases/$enVersion/common/defaults/optool.uic"
+    cp /tmp/CUSTOM_$version/optool.uic /opt/ltx/releases/$enVersion/common/defaults/optool.uic
+    
+    if [ -f lot_info.cfg ]
+    then
+        echo "Found lot_info.cfg"
+	echo "Renaming lot_info.cfg..."
+	echo "Command -> mv lot_info.cfg lot_info.cfg_$todate"
+        mv lot_info.cfg lot_info.cfg_$todate
+    fi
+    echo "Copying lot_info.cfg..."
+    echo "Command -> cp /tmp/CUSTOM_$version/lot_info.cfg /opt/ltx/releases/$enVersion/common/defaults/lot_info.cfg"
+    cp /tmp/CUSTOM_$version/lot_info.cfg /opt/ltx/releases/$enVersion/common/defaults/lot_info.cfg
+else
+    echo "ERROR: /opt/ltx/releases/$enVersion/common/defaults does not exists..."
+    echo "ERROR: Please manually copy..."
+    echo "ERROR: Exiting..."
+    exit
+fi
+echo ""
+
+## Check for options.cfg from /opt/ltx/site directory
+##
+echo "Checking /opt/ltx/site directory for presence of options.cfg"
+if test -f /opt/ltx/site/options.cfg
+then
+    echo "Found /opt/ltx/site/options.cfg"
+    echo "Renaming options.cfg..."
+    echo "Command -> mv /opt/ltx/site/options.cfg /opt/ltx/site/options.cfg_$todate"
+    mv /opt/ltx/site/options.cfg /opt/ltx/site/options.cfg_$todate
+fi
+echo "Copying options.cfg..."
+echo "Command -> cp /tmp/CUSTOM_$version/options.cfg /opt/ltx/site/options.cfg"
+cp /tmp/CUSTOM_$version/options.cfg /opt/ltx/site/options.cfg
+
+## Creating /export/home directory if does not exist
+##
+echo ""
+echo "By default, CentOS installation doesn't come with a /export/home directory or partition."
+echo "We need to create it manually if not yet existing."
+if test -d /export/home
+then
+    echo "/export/home directory exists..."
+else
+    echo "Creating /export/home directory..."
+    echo "Command -> mkdir -p /export/home"
+    mkdir -p /export/home
+fi
+
+
+## For auto start polling of handler
+##
+echo "Command -> cd /usr/local/natinst/ni4882/etc"
+cd /usr/local/natinst/ni4882/etc
+
+if [ -f gpib.ini ]
+then
+    echo "Found gpib.ini file..."
+    echo "Renaming gpib.ini..."
+    echo "Command -> mv gpib.ini gpib.ini_$todate"
+    mv gpib.ini gpib.ini_$todate
+fi
+echo "Copying gpib.ini..."
+echo "Command -> cp /tmp/CUSTOM_$version/${myhostname}_gpib.ini /usr/local/natinst/ni4882/etc/gpib.ini"
+cp /tmp/CUSTOM_$version/${myhostname}_gpib.ini /usr/local/natinst/ni4882/etc/gpib.ini
+    
+
+## Licenses
+##
+echo "Command -> cd /opt/LTXflexnet"
+cd /opt/LTXflexnet
+
+if [ -f license.dat ]
+then
+    echo "Found license.dat file..."
+    echo "Renaming license.dat..."
+    echo "Command -> mv license.dat license.dat_$todate"
+    mv license.dat license.dat_$todate
+fi
+echo "Copying license.dat..."
+echo "Command -> cp /tmp/CUSTOM_$version/${myhostname}_license.dat /opt/LTXflexnet/license.dat"
+cp /tmp/CUSTOM_$version/${myhostname}_license.dat /opt/LTXflexnet/license.dat
+
+echo "Command -> cd /opt/ltx_nic/pwrup"
+cd /opt/ltx_nic/pwrup
+
+if [ -f ev_license.dat ]
+then
+    echo "Found ev_license.dat file..."
+    echo "Renaming ev_license.dat..."
+    echo "Command -> mv ev_license.dat ev_license.dat_$todate"
+    mv ev_license.dat ev_license.dat_$todate
+fi
+echo "Copying ev_license.dat..."
+echo "Command -> cp /tmp/CUSTOM_$version/${myhostname}_ev_license.dat /opt/ltx_nic/pwrup/ev_license.dat"
+cp /tmp/CUSTOM_$version/${myhostname}_ev_license.dat /opt/ltx_nic/pwrup/license.dat
+
+
+echo ""
+echo "Checking user accounts home directories..."
+echo ""
+
+## Setup user accounts
+##
+echo "Command -> cd /etc"
+cd /etc
+
+if [ -f passwd ]
+then
+    echo "Found passwd file..."
+    echo "Renaming passwd..."
+    echo "Command -> mv passwd passwd_$todate"
+    mv passwd passwd_$todate
+fi
+
+echo "Copying passwd..."
+echo "Command -> cp /tmp/CUSTOM_$version/passwd /etc/passwd"
+cp /tmp/CUSTOM_$version/passwd /etc/passwd
+
+if [ -f group ]
+then
+    echo "Found group file..."
+    echo "Renaming group..."
+    echo "Command -> mv group group_$todate"
+    mv group group_$todate
+fi
+
+echo "Copying group..."
+echo "Command -> cp /tmp/CUSTOM_$version/group /etc/group"
+cp /tmp/CUSTOM_$version/group /etc/group
+
+if [ -f shadow ]
+then
+    echo "Found shadow file..."
+    chmod u+w shadow
+    echo "Renaming shadow..."
+    echo "Command -> mv shadow shadow_$todate"
+    mv shadow shadow_$todate
+fi
+
+echo "Copying shadow..."
+echo "Command -> cp /tmp/CUSTOM_$version/shadow /etc/shadow"
+cp /tmp/CUSTOM_$version/shadow /etc/shadow
+
+
+## Set up prod, engg accounts home directories
+##
+echo "Setting up prod, engg accounts home directories..."
+if test -d /export/home
+then
+    echo "Found /export/home directory."
+    echo "Command -> cd /export/home"
+    cd /export/home
+    
+    ## prod account
+    if test -d prod
+    then
+      echo "Found prod directory."
+      echo "Command -> mv prod prod_$todate"
+      mv prod prod_$todate
+    fi
+    echo "Extracting prod_HomeDir.tar to /export/home directory..."
+    echo "Command -> tar xvf /tmp/CUSTOM_$version/prod_HomeDir.tar"
+    tar xvf /tmp/CUSTOM_$version/prod_HomeDir.tar
+    
+    ## engg account
+    if test -d engg
+    then
+      echo "Found engg directory."
+      echo "Command -> mv engg engg_$todate"
+      mv engg engg_$todate
+    fi
+    echo "Extracting engg_HomeDir.tar to /export/home directory..."
+    echo "Command -> tar xvf /tmp/CUSTOM_$version/engg_HomeDir.tar"
+    tar xvf /tmp/CUSTOM_$version/engg_HomeDir.tar
+
+    ## evaccess account
+    if test -d evaccess
+    then
+      echo "Found evaccess directory."
+      echo "Command -> mv evaccess evaccess_$todate"
+      mv evaccess evaccess_$todate
+    fi
+    echo "Extracting evaccess_HomeDir.tar to /export/home directory..."
+    echo "Command -> tar xvf /tmp/CUSTOM_$version/evaccess_HomeDir.tar"
+    tar xvf /tmp/CUSTOM_$version/evaccess_HomeDir.tar
+
+else
+    echo "ERROR: /export/home does not exists..."
+    echo "ERROR: Please check..."
+    exit
+fi
+echo ""
+
+echo "Cleaning prod account crontabs..."
+echo "Command -> crontab -u prod -r"
+crontab -u prod -r
+echo ""
+
+echo "Command -> chown prod.prod /export/home/prod/devices"
+chown prod.prod /export/home/prod/devices
+echo ""
+
+## For TPLoader settings.ini file
+##
+echo "Command -> cd /export/home/prod"
+cd /export/home/prod
+
+if [ -f settings.ini ]
+then
+    echo "Found settings.ini file..."
+    chattr -i settings.ini
+    echo "Renaming settings.ini..."
+    echo "Command -> mv settings.ini settings.ini_$todate"
+    mv settings.ini settings.ini_$todate
+fi
+echo "Copying settings.ini..."
+echo "Command -> cp /opt/ltx_nic/user_data/optool/settings.ini /export/home/prod/settings.ini"
+cp /opt/ltx_nic/user_data/optool/settings.ini /export/home/prod/settings.ini
+chattr +i settings.ini
+echo ""
+
+echo "Copying LTX logo to /ltx/dt/icons directory..."
+cp /tmp/CUSTOM_$version/R14_ltx_logo.pm /ltx/dt/icons/
+echo "...done"
+
+echo ""
+echo "Copying engineering wallpaper..."
+cp /tmp/CUSTOM_$version/FusionMX_ENG_Desktop.tar /usr/share/backgrounds/images/
+echo ""
+
+
+echo "Turning off ypbind and sendmail services..."
+/sbin/chkconfig --level 2345 ypbind off
+/sbin/chkconfig --level 2345 sendmail off
+echo "ypbind and sendmail turned off..."
+echo ""
+echo "This is your part of the bargain..."
+echo "1) Restart computer."
+echo "5) Install the license.dat and ev_license.dat files."
+echo "6) Run /ltx/service/config_tester and restart computer."
+echo ""
+
+rm /tmp/CUSTOM_$version.tar.gz
+rm -rf /tmp/CUSTOM_$version
+rm /tmp/customize_$version.sh
+
+exit
+
+

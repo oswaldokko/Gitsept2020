@@ -1,0 +1,23 @@
+#!/bin/sh -x
+# %A% %D% %T%
+# For script to evaluate crontab file per tester and replace
+# crontab with VrgyVugCronTmp if the two are not the same
+#
+
+testercron=/tmp/`uname -n`_oldcron
+cron_template=/A5XX/standard_tester_files/TESTER_SCRIPTS/VERIGY/VrgyRootCronTmp
+localdir=/.agilent
+monitor=/TSESRVR/DISKSTAT/MNTR/`uname -n`_monitor
+todate=`date '+%d%b%Y %T'`
+
+
+crontab -l > $testercron 
+diff $testercron $cron_template > /tmp/x.$$
+if [ -s /tmp/x.$$ ]
+then
+  echo "`uname -n` crontable is modified, please check the tester! $todate" > $monitor
+else
+  rm -rf $monitor
+fi
+
+rm -f /tmp/x.$$

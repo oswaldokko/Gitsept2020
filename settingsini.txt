@@ -1,0 +1,10 @@
+APPNAME=LTX TP Loader
+LOTIDPATH=/A5XX/FusionMX/library/STLOTID.DAT
+TPDirectory=/export/home/prod/devices/
+TPLIBRARY=/A5XX/FusionMX/library/tplibrary
+HandlerCfg=/opt/ltx_nic/user_data/optool/handler_map
+StepNameCfg=/opt/ltx_nic/user_data/optool/stepname
+TestModeCfg=/opt/ltx_nic/user_data/optool/testmode
+CommandModeCfg=/opt/ltx_nic/user_data/optool/commandmode
+GuiExec=/opt/ltx_nic/user_data/optool/startlot_new.sh
+ProdInfo=/export/home/prod/devices/prod_info

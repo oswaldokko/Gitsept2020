@@ -1,0 +1,6 @@
+### FusionMX Configuration File for Offline Monitoring
+### Directory path;golden file;overwrite flag
+/tmp;settings.ini;0
+/tmp;fusionMXCronTemplate.txt;0
+/tmp;fusionMXIptables.txt;0
+/.SCRIPTS;fusionMXReporter.sh;0

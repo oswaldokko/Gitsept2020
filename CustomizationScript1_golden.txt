@@ -1,0 +1,577 @@
+#!/bin/bash
+# HP93K platform customization script
+# Updated, 15nov2013
+# by Boyet Okko
+
+#NOTES
+# include hostname
+# update /etc/hosts
+# update /etc/profile ---- tester SN
+# copy installer from server then extract at local station /tmp
+# include SOC versions, update release_version
+# EWS and FT customization
+# MEMS customization
+# MGUI customization
+# network customization ETH0 and ETH1, automisc etc
+# LICENSES -- tables
+# SERVICES customization
+# upate the passwd and shadows
+# flexlm customization
+# TP360 installation
+# updating of golden files, crontabs
+# update users and groups
+
+DATE=`date +%Y%m%d%T`
+installer=/tmp/INSTALLER
+ROOT_UID=0     # Only users with $UID 0 have root privileges
+E_NOTROOT=67   # Non-root exit error
+version="15nov2013"
+
+
+echo "Date today is $DATE"
+echo ""
+echo "######################################################"
+echo "# Executing HP93K customization script               #"   
+echo "# by Oswald Boyet Okko                               #"
+echo "# Test Systems Engr. Software Group                  #"
+echo "######################################################"
+echo ""
+sleep 5
+# Run as root
+if [ "$UID" -ne "$ROOT_UID" ]
+then
+  echo "Must be root to run this script."
+  exit $E_NOTROOT
+fi
+
+echo ""
+echo "Extracting CUSTOM_$version directory from /tmp..."
+echo ""
+echo "Command -> cd /tmp"
+cd /tmp
+
+if [ -f /tmp/HP93K_CUSTOM_$version.tar ]
+then
+    tar xvf HP93K_CUSTOM_$version.tar
+    if [ $? -eq 0 ]
+    then
+        echo ""
+        echo "Successfully extracted HP93K_CUSTOM_$version directory..."
+        echo ""
+    else
+        echo ""
+        echo "ERROR: Problem extracting HP93K_CUSTOM_$version directory..."
+	echo "ERROR: Please try again."
+	echo "ERROR: Exiting..."
+	echo ""
+	exit
+    fi
+else
+    echo ""
+    echo "ERROR: /tmp/CUSTOM_$version.tar.gz not found..."
+    echo "ERROR: Please connect the workstation to the TSEFileServer"
+    echo "ERROR: Execute the command scp verigy@10.91.64.140:/home/verigy/share/IMAGE/RHEL3_GOLDEN/HP93K_CUSTOM_$version.tar /tmp"
+    echo "ERROR: exiting..."
+    echo ""
+    exit
+fi
+###====================================================================================
+# @ /etc
+###====================================================================================
+echo "copying files for automount configuration (auto.master and auto.misc)"
+sleep 3
+echo
+cd /etc
+cp -rf auto.master auto.master.$DATE
+cp -rf auto.misc auto.misc.$DATE	
+cp -rf hosts hosts.$DATE
+cp -rf $installer/auto.master . 
+cp -rf $installer/auto.misc .
+cp -rf $installer/hosts .
+chown root.root auto.master auto.misc
+chmod 644 auto.master auto.misc
+echo
+echo "Done....."
+
+echo "copying ntp.conf file for time synchronization"
+sleep 3
+echo
+cp -rf ntp.conf ntp.conf.$DATE
+cp -rf $installer/ntp.conf .
+chmod 644 ntp.conf 
+chown root.root ntp.conf
+echo
+echo "Done....."
+
+echo "copying sudoers file"
+sleep 3
+echo
+cp -rf sudoers sudoers.$DATE
+cp -rf $installer/sudoers . 
+chmod 440 sudoers
+chown root.root sudoers
+echo
+echo "Done....."
+
+echo "copying passwd, shadow and group files for standard accounts"
+sleep 3
+echo
+cp -rf passwd passwd.$DATE
+cp -rf $installer/passwd .
+cp -rf shadow shadow.$DATE
+cp -rf $installer/shadow .
+cp -rf group group.$DATE
+cp -rf $installer/group .
+chmod 644 passwd shadow group
+chown root.root passwd shadow group
+echo
+echo "Done....."
+echo
+echo "Leaving /etc directory....................."
+###====================================================================================
+# @ /etc/inti.d
+###====================================================================================
+echo
+echo "disabling sendmail @ startup... renaming /etc/init.d/sendmail file to _sendmail"
+sleep 3
+echo
+cd /etc/init.d
+mv sendmail _sendmail
+/sbin/chkconfig --level 2345 ypbind off
+/sbin/chkconfig --level 2345 sendmail off
+echo "ypbind and sendmail turned off..."
+echo ""
+echo
+echo "Done....."
+echo
+echo "Leaving /etc/init.d directory............."
+###====================================================================================
+# @ /etc/rc.d
+###====================================================================================
+# initialization script
+cd /etc/rc.d
+cp -rf rc.local rc.local.$DATE
+cp -rf $installer/rc.local .
+chmod 755 rc.local
+chown root.root rc.local
+echo
+echo "Done....."
+echo
+echo "Leaving /etc/rc.d directory............."
+###====================================================================================
+# @ /var/spool/cron & /boot/grub
+# grub for RHEL3 is different from RHEL5
+# need to insert choices.
+###====================================================================================
+echo
+echo "copying standard /boot/grub and /var/spool/cron/root files"
+sleep 3
+echo  
+cd /boot/grub
+cp -rf grub.conf grub.conf.$DATE
+cp -rf $installer/grub.conf .
+chmod 600 grub.conf
+chown root.root grub.conf
+#
+cd /var/spool/cron
+cp -rf $installer/root .
+cp -rf $installer/prod .
+chmod 600 root prod
+chown root.root root prod
+echo
+echo "Done....."
+echo "Leaving /var/spool/cron/ directory.............."
+###=====================================================================================
+# @ /
+# need to update golden files and crontabs
+###====================================================================================
+echo
+echo "copy and extract summary and stdf config files"
+sleep 3
+echo
+cd /
+cp -rf $installer/_.agilent.tar .
+cp -rf $installer/agilent.tar .
+tar -xvf _.agilent.tar
+chown -R root.root /.agilent
+tar -xvf agilent.tar
+chown root.root /agilent
+rm -rf _.agilent.tar
+rm -rf  agilent.tar
+
+# copy or update the /etc/profile --
+cp -rf /etc/profile /etc/profile.$DATE
+cp -rf /.agilent/profile /etc/profile
+
+echo
+echo "Done....."
+echo
+echo "creating links for softmounted A5XX,AGILENT,TSESRVR and TSESRVR2 dirs"
+sleep 3
+ln -s /misc/A5XX
+ln -s /misc/AGILENT
+ln -s /misc/TSESRVR
+ln -s /misc/TSESRVR2
+
+chown root.root /A5XX /AGILENT /TSESRVR /TSESRVR2
+#
+echo
+echo "copying, extracting and configuring collabnet"
+sleep 5
+echo
+cp -rf $installer/collabnet-installer-for-verigy.tar .
+tar -xvf collabnet-installer-for-verigy.tar
+chown -R root.root collabnet
+rm -rf collabnet-installer-for-verigy.tar
+cd collabnet/subversion-package-1.3.0/subversion-1.3.0
+echo
+sh ./autogen.sh
+echo
+./configure --with-ssl
+echo
+make
+make install
+echo
+cd ../wxGTK-2.4.2
+./configure
+make install
+echo
+cd ../rapidsvn-0.9.0
+./configure
+make
+make install
+echo
+cd ..
+cp -rf tkdiff /usr/local/bin
+echo
+echo "Done....."
+echo
+echo "executing rapidsvn..........."
+sleep 3
+echo
+rapidsvn &
+echo
+echo
+echo "Done....."
+echo " Leaving / directory ................"
+###====================================================================================
+# @ /opt/hp93000
+# get the latest plat folder
+###====================================================================================
+echo
+echo "copying files for PLAT"
+sleep 3
+echo
+cd /opt/hp93000
+cp -rf $installer/plat_new.tar .
+tar -xvf plat_new.tar
+rm -rf plat_opt.tar
+chown -R root.root plat
+echo "Done....."
+echo "Leaving /opt/hp93000 directory ......................."
+###====================================================================================
+# @ /opt/flexlm
+# get the latest flexlm software --- create license references.update this part
+###====================================================================================
+echo
+echo "copying files for flexlm licensing"
+sleep 3
+echo
+cd /opt/flexlm
+cp -rf $installer/lmgrd .
+cp -rf $installer/lmutil .
+cp -rf $installer/lmutil ./license/.
+cp -rf $installer/socbu .
+chown root.root lmgrd lmutil socbu
+echo
+echo "Leaving /opt/flexlm directory .................................."
+###====================================================================================
+# @ /home
+# include default engineering account home folder also
+# note for the updated superuse folder
+###====================================================================================
+echo
+echo "copy and extract standard prod dir and files"
+sleep 3
+echo
+cd //home
+cp -rf $installer/prod.tar .
+tar -xvf prod.tar
+rm -rf prod.tar
+chmod 777 prod
+chown -R prod.users prod
+cd prod
+chown -R root.root PSK
+chown root.root .profile
+
+echo
+echo "copying superuse dir and files for PCIFE"
+sleep 3
+echo
+cp -rf $installer/superuse.tar .
+tar -xvf superuse.tar
+chown -R root.users superuse
+chmod -R 755 superuse
+rm -rf superuse.tar
+cd superuse/APC
+chown -R root.users BATCH_CARD
+chmod 777 BATCH_CARD
+echo
+echo "Done....."
+echo "Leaving /home directory ......................"
+###====================================================================================
+# @ /usr/bin
+###====================================================================================
+echo
+echo "creating link for load script"
+sleep 3
+echo
+cd /usr/bin
+ln -s /agilent/prodtp/production/load
+chown root.root load
+echo
+echo "Done....."
+echo
+echo "copying other apps to /usr/local/bin dir"
+sleep 3
+echo
+cd /usr/local/bin
+cp -rf $installer/convertSTDF .
+cp -rf $installer/ch@t .
+cp -rf $installer/pcife .
+cp -rf $installer/switch .
+cp -rf $installer/redhat-release .
+chown root.root redhat-release convertSTDF ch@t switch
+chown root.users pcife
+###====================================================================================
+# @ configuring automounter
+###====================================================================================
+echo
+echo "enabling autofs levels 23456 (automounting)"
+sleep 3
+echo
+chkconfig --level 23456 autofs on
+service autofs restart
+echo
+echo "Done....."
+echo
+echo "End of Script"
+echo 
+echo "For SOC and PCI installation and customization"
+echo 
+echo "You should run the script @ prod environment..."
+echo  
+
+passwd -d root
+
+
+###==========================================
+# part 2 SOC installation
+# update this part --- all SOC versions.
+# note different models for different respe codes -- include choices
+###==========================================
+
+#
+#rpm -ivh $installer/luna_common_5.4.3.1_Lx24_i386.rpm
+rpm -ivh $installer/luna_5.4.3.1_Lx24_i386.rpm
+rpm -ivh $installer/pci-nxp-internal-4.8.2-1.i386.rpm
+rpm -ivh $installer/LineFormatter-2-5.i386.rpm
+
+### inquire first for the configuration, install the latest SOC version also.
+
+cd /etc/opt/hp93000/soc_common
+cp -rf model model.$DATE
+cp -rf $installer/model.5.4.3 .
+chmod 644 model.5.4.3
+rm -rf model
+ln -s model.5.4.3 model
+
+#
+cd /etc/opt/hp93000/soc_common/datalog
+cp -rf global.conf global.conf.$DATE
+rm -rf global.conf
+cp -rf $installer/global.conf.5.4.3 .
+ln -s global.conf.5.4.3 global.conf
+
+cp -rf formatter.stdf.main.conf formatter.stdf.main.conf.$DATE
+rm -rf formatter.stdf.main.conf
+cp -rf $installer/formatter.stdf.main.conf.5.4.3 .
+ln -s formatter.stdf.main.conf.5.4.3 formatter.stdf.main.conf
+
+#### need to update the latest pci.... diff version for MEMS also
+cd /opt/hp93000/pci-4.8.2/config
+cp -rf pci.ini pci.ini.$DATE
+cp -rf $installer/pci.ini.4.8.2.pinscale .
+mv pci.ini.4.8.2.pinscale pci.ini
+chmod 644 pci.ini
+
+cd /opt/hp93000/pci-4.8.2/
+cp -rf $installer/drivers.tar .
+tar -xvf drivers.tar
+
+cd /opt/hp93000/pci-4.8.2/make
+./configure
+cd /opt/hp93000/pci-4.8.2/config
+chmod 655 switch_smartest_on_the_fly.sh
+
+cd /opt/hp93000/plat/lib
+cp -rf last_update last_update.$DATE
+rm -rf last_update
+
+cd /home/plat/sbin/internal
+./RegisterTM.l
+
+echo
+echo "End of Script"
+echo
+
+
+#####============================
+### part 3 Perl tk installation
+#####===========================
+
+
+cd //opt
+cp -rf $installer/Tk-804.027.tar .
+echo
+echo "Done copying tar file [ 1 of 10]"
+sleep 5
+echo
+tar -xvf Tk-804.027.tar
+echo
+echo "Done extracting files [ 2 of 10]"
+sleep 5
+echo
+rm Tk-804.027.tar
+cd Tk-804.027
+perl Makefile.PL
+echo
+echo "Done Makefile.PL [ 3 of 10] "
+sleep 5
+echo
+make
+echo
+echo "Done make [ 4 of 10] "
+sleep 5
+echo
+make test
+echo
+echo "Done make test [ 5 of 10] "
+sleep 5
+echo
+make INSTALLDIRS=perl
+echo
+echo "Done make INSTALLDIRS=perl [ 6 of 10] "
+sleep 5
+echo
+make INSTALLDIRS=site
+echo
+echo "Done make INSTALLDIRS=site [ 7 of 10] "
+sleep 5
+echo
+make install_site
+echo
+echo "Done make install_site [ 8 of 10] "
+sleep 5
+echo
+make install_perl
+echo
+echo "Done make install_perl [ 9 of 10] "
+sleep 5
+echo
+echo "Done. [ 10 of 10] "
+
+
+
+
+#####========================================================
+#### network configuration
+#####========================================================
+
+
+
+## Create hosts file
+##
+##echo "Gathering workstation Information..."
+##ipaddress=`ifconfig -a | grep Bcast | awk -F":| +" '{print $4}'`
+##hostlocal=`hostname`
+##echo "IP Address is $ipaddress"
+##echo "Hostname is $hostlocal"
+
+echo ""
+echo "Checking for hosts file..."
+if [ -f /etc/hosts ]
+then
+    echo ""
+    echo "Found /etc/hosts file..."
+    echo "Renaming /etc/hosts file..."
+    echo "Command -> mv hosts hosts_$todate"
+    mv hosts hosts_$todate
+    echo ""
+fi
+
+ipaddress=""
+myhostname=""
+echo "Now, we need to create the /etc/hosts file..."
+echo ""
+echo -n "Enter Workstation Hostname : "
+read myHostEntry
+myhostname=`echo $myHostEntry | awk '{print toupper($0)}'`
+
+echo -n "Enter IP Address of workstation : "
+read ipaddress
+echo -n "Enter netmask : "
+read mynetmask
+echo -n "Enter gateway : "
+read mygateway
+
+echo "127.0.0.1      localhost.localdomain localhost $myhostname" > /etc/hosts
+echo "$ipaddress   $myhostname" >> /etc/hosts
+echo "137.55.52.21   PSCE4501" >> /etc/hosts
+echo "137.55.52.22   PSCE4502" >> /etc/hosts
+echo "10.91.64.110   TSEFileServer" >> /etc/hosts
+echo "10.91.64.140   TSEFileServer2" >> /etc/hosts
+echo "/etc/hosts file created."
+echo ""
+
+echo ""
+echo "Checking for /etc/resolv.conf file..."
+if [ -f /etc/resolv.conf ]
+then
+    echo ""
+    echo "Found /etc/resolv.conf file..."
+    echo "Renaming /etc/resolv.conf file..."
+    echo "Command -> mv resolv.conf resolv.conf_$todate"
+    mv resolv.conf resolv.conf_$todate
+    echo ""
+    echo "search cal.st.com" > /etc/resolv.conf
+    echo "nameserver 10.91.0.100" >> /etc/resolv.conf
+    echo "nameserver 10.91.0.92" >> /etc/resolv.conf    
+fi
+echo "/etc/resolv.conf file created..."
+echo ""
+
+echo "Creating /etc/sysconfig/network file..."
+echo "Renaming /etc/sysconfig/network file..."
+echo "Command -> mv /etc/sysconfig/network /etc/sysconfig/network_$todate"
+mv /etc/sysconfig/network /etc/sysconfig/network_$todate
+echo "NETWORKING=yes" > /etc/sysconfig/network
+echo "HOSTNAME=$myhostname" >> /etc/sysconfig/network
+
+echo "Now, we need to set the network interface settings..."
+echo "Getting eth0 hwaddress..."
+myETH0Add=`ifconfig -a | grep eth0 | awk '{print $NF}'`
+echo "Renaming /etc/sysconfig/network-scripts/ifcfg-eth0 file..."
+cd /etc/sysconfig/network-scripts
+echo "Command -> mv ifcfg-eth0 oldifcfg-eth0_$todate"
+mv ifcfg-eth0 oldifcfg-eth0_$todate
+echo "DEVICE=eth0" > ifcfg-eth0
+echo "BOOTPROTO=none" >> ifcfg-eth0
+echo "ONBOOT=yes" >> ifcfg-eth0
+echo "TYPE=Ethernet" >> ifcfg-eth0
+echo "USERCTL=no" >> ifcfg-eth0
+echo "PEERDNS=yes" >> ifcfg-eth0
+echo "HWADDR=$myETH0Add" >> ifcfg-eth0
+echo "IPADDR=$ipaddress" >> ifcfg-eth0
+echo "NETMASK=$mynetmask" >> ifcfg-eth0
+echo "GATEWAY=$mygateway" >> ifcfg-eth0

@@ -1,0 +1,78 @@
+#!/bin/sh
+# This is the FusionMX Reporter script.
+# This script checks the critical files and configuration of the tester.
+# Version: 11Nov2013
+# E. Filart
+#
+echo ""
+echo "Executing the FusionMX Reporter Tool..."
+echo ""
+TODATE=`date +%d%b%Y_%T`
+VERSION="11Nov2013"
+HOST=`hostname | awk '{print toupper($0)}'`
+USER=`whoami | awk '{print toupper($0)}'`
+MAIN=/TSESRVR2/GOLDEN_FILES
+LOG=/TSESRVR2/GOLDEN_FILES/LOG
+LOGFILE=${LOG}/${HOST}_${USER}_SystemReport.txt
+
+echo "" > $LOGFILE
+echo "=============================" >> $LOGFILE
+echo "FUSIONMX $HOST SYSTEM REPORT" >> $LOGFILE
+echo "Date : $TODATE" >> $LOGFILE
+echo "=============================" >> $LOGFILE
+echo "" >> $LOGFILE
+
+testercron=/tmp/fusionMXCronTemplate.txt
+testeriptables=/tmp/fusionMXIptables.txt
+scriptlist=/TSESRVR2/GOLDEN_FILES/TNF/fusionMXReporter.ini
+serverdir=/TSESRVR2/GOLDEN_FILES/TNF
+cron_template=/TSESRVR2/GOLDEN_FILES/TNF/fusionMXCronTemplate.txt
+
+crontab -l > $testercron
+iptables -L > $testeriptables
+
+for localfile in `cat $scriptlist | grep -v "###"`
+do
+    localdir=`echo $localfile | awk -F\; '{print $1}'`
+    script=`echo $localfile | awk -F\; '{print $2}'`
+    oflag=`echo $localfile | awk -F\; '{print $3}'`
+ 
+    if [ -s $localdir/$script ]
+    then
+        diff $serverdir/$script $localdir/$script > /tmp/goldenDiff.txt
+        if [ -s /tmp/goldenDiff.txt ]
+        then
+            echo "WARNING: $localdir/$script has been modified!!!" >> $LOGFILE
+            if [ $oflag -eq 1 ]
+            then
+	        echo "WARNING: Copying GOLDEN_FILE $script..." >> $LOGFILE
+                cp -p $serverdir/$script $localdir/$script
+                if [ $? -eq 0 ]
+                then
+                    echo "WARNING: $HOST $localdir/$script overwritten!!!" >> $LOGFILE
+                fi	    
+	    else
+	        echo "WARNING: PLEASE CHECK $localdir/$script file!!!" >> $LOGFILE
+            fi
+        else
+            echo "OKAY: $localdir/$script" >> $LOGFILE
+        fi
+    else
+        echo "WARNING: $localdir/$script does not exist!!!" >> $LOGFILE
+        cp -p $serverdir/$script $localdir/$script
+        if [ $? -eq 0 ]
+        then
+            echo "WARNING: GOLDEN_FILE $script copied!!!" >> $LOGFILE
+        fi
+    fi
+
+    echo "" >> $LOGFILE
+     
+done
+
+rm -f /tmp/goldenDiff.txt
+rm -f $testercron
+rm -f $testeriptables
+
+echo "Done..."
+echo ""

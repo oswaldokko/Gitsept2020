@@ -1,0 +1,39 @@
+#!/bin/sh -x
+# %A% %D% %T%
+# For script to evaluate crontab file per tester and replace
+# crontab with VrgyVugCronTmp if the two are not the same
+#
+
+testeriptable=/tmp/`uname -n`_oldiptable
+testercron=/tmp/`uname -n`_oldcron
+iptables_template=/TSESRVR/DISKSTAT/REF/ref_iptables
+cron_template=/TSESRVR/DISKSTAT/REF/VrgyRootCronTmp
+localdir=/.agilent
+monitor=/TSESRVR/DISKSTAT/MNTR/`uname -n`_monitor
+monitor2=/TSESRVR/DISKSTAT/MNTR/`uname -n`_monitor2
+todate=`date '+%d%b%Y %T'`
+
+
+iptables -L > $testeriptable 
+diff $testeriptable $iptables_template > /tmp/y.$$
+if [ -s /tmp/y.$$ ]
+then
+  echo "`uname -n` iptables is modified, please check the tester! $todate" > $monitor2
+else
+  rm -rf $monitor2
+fi
+
+rm -f /tmp/y.$$
+
+
+crontab -l > $testercron
+diff $testercron $cron_template > /tmp/x.$$
+if [ -s /tmp/x.$$ ]
+then
+  echo "`uname -n` crontable is modified, please check the tester! $todate" > $monitor
+else
+  rm -rf $monitor
+fi
+
+rm -f /tmp/x.$$
+
